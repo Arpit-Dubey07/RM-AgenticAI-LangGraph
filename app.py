@@ -450,7 +450,7 @@ def generate_chat_response(query: str, analysis_state, chat_history: list = None
         llm = ChatOllama(
             model="llama3",
             temperature=0.3,
-            host="https://nonunited-felicitas-patterny.ngrok-free.dev"
+            host="http://nonunited-felicitas-patterny.ngrok-free.dev"
         )
 
         # Generate response
