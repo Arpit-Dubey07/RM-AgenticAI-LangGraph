@@ -286,22 +286,117 @@ def display_analysis_results(state):
             for action in action_items:
                 st.write(f"• {action}")
 
-def generate_chat_response(query: str, analysis_state) -> str:
-    """Generate AI response to user questions about the analysis."""
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_core.prompts import ChatPromptTemplate
+# def generate_chat_response(query: str, analysis_state) -> str:
+#     """Generate AI response to user questions about the analysis."""
+#     from langchain_google_genai import ChatGoogleGenerativeAI
+#     from langchain_core.prompts import ChatPromptTemplate
     
+#     # Extract key information from analysis state
+#     risk_assessment = safe_get(analysis_state, 'analysis.risk_assessment')
+#     persona_classification = safe_get(analysis_state, 'analysis.persona_classification')
+#     goal_prediction = safe_get(analysis_state, 'analysis.goal_prediction')
+#     recommended_products = safe_get(analysis_state, 'recommendations.recommended_products', [])
+#     prospect_data = safe_get(analysis_state, 'prospect.prospect_data')
+    
+#     # Create context summary
+#     context = f"""
+#     PROSPECT ANALYSIS SUMMARY:
+    
+#     Client Profile:
+#     - Name: {safe_get(prospect_data, 'name', 'Unknown')}
+#     - Age: {safe_get(prospect_data, 'age', 'Unknown')}
+#     - Annual Income: ₹{safe_get(prospect_data, 'annual_income', 0):,}
+#     - Current Savings: ₹{safe_get(prospect_data, 'current_savings', 0):,}
+#     - Target Goal: ₹{safe_get(prospect_data, 'target_goal_amount', 0):,}
+#     - Investment Horizon: {safe_get(prospect_data, 'investment_horizon_years', 0)} years
+#     - Experience Level: {safe_get(prospect_data, 'investment_experience_level', 'Unknown')}
+    
+#     Analysis Results:
+#     - Risk Level: {safe_get(risk_assessment, 'risk_level', 'Unknown')}
+#     - Risk Confidence: {safe_get(risk_assessment, 'confidence_score', 0):.1%}
+#     - Persona Type: {safe_get(persona_classification, 'persona_type', 'Unknown')}
+#     - Goal Success: {safe_get(goal_prediction, 'goal_success', 'Unknown')}
+#     - Success Probability: {safe_get(goal_prediction, 'probability', 0):.1%}
+#     - Recommended Products: {len(recommended_products)} products
+    
+#     Top Product Recommendation: {safe_get(recommended_products[0] if recommended_products else {}, 'product_name', 'None')}
+#     """
+    
+#     # Create prompt template
+#     prompt_template = ChatPromptTemplate.from_messages([
+#         ("system", """
+#         You are an expert Relationship Manager (RM) Assistant for a financial advisory firm. 
+#         You help RMs understand and explain prospect analysis results to provide better client service.
+        
+#         Guidelines:
+#         - Be professional, knowledgeable, and helpful
+#         - Provide specific, actionable insights
+#         - Reference the actual analysis data when answering
+#         - Suggest concrete next steps when appropriate
+#         - Keep responses concise but comprehensive
+#         - Use financial advisory terminology appropriately
+#         """),
+#         ("human", """
+#         Based on this prospect analysis:
+        
+#         {context}
+        
+#         Client Question: {query}
+        
+#         Please provide a helpful, professional response that addresses their question using the analysis data.
+#         """)
+#     ])
+    
+#     try:
+#         # Initialize LLM
+#         llm = ChatGoogleGenerativeAI(
+#             model="gemini-2.5-flash",
+#             google_api_key=settings.gemini_api_key,
+#             temperature=0.3,
+#             max_tokens=500
+#         )
+#         from ollama import generate
+
+# query = "Explain AI in one line"
+# response = generate(model='llama3', prompt=query)
+# print(response['response'])
+        
+#         # Generate response
+#         chain = prompt_template | llm
+#         response = chain.invoke({
+#             "context": context,
+#             "query": query
+#         })
+        
+#         return response.content.strip()
+        
+#     except Exception as e:
+#         logger.error(f"Chat response generation failed: {str(e)}")
+#         return generate_fallback_response(query, analysis_state)
+def generate_chat_response(query: str, analysis_state, chat_history: list = None) -> str:
+    """Generate AI response to user questions about the analysis."""
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_community.chat_models import ChatOllama
+
     # Extract key information from analysis state
     risk_assessment = safe_get(analysis_state, 'analysis.risk_assessment')
     persona_classification = safe_get(analysis_state, 'analysis.persona_classification')
     goal_prediction = safe_get(analysis_state, 'analysis.goal_prediction')
     recommended_products = safe_get(analysis_state, 'recommendations.recommended_products', [])
     prospect_data = safe_get(analysis_state, 'prospect.prospect_data')
-    
+
+    # Format chat history
+    history_text = ""
+    if chat_history:
+        for msg in chat_history:
+            role = msg["role"]
+            content = msg["content"]
+            history_text += f"{role.upper()}: {content}\n"
+
     # Create context summary
     context = f"""
     PROSPECT ANALYSIS SUMMARY:
-    
+
     Client Profile:
     - Name: {safe_get(prospect_data, 'name', 'Unknown')}
     - Age: {safe_get(prospect_data, 'age', 'Unknown')}
@@ -310,7 +405,7 @@ def generate_chat_response(query: str, analysis_state) -> str:
     - Target Goal: ₹{safe_get(prospect_data, 'target_goal_amount', 0):,}
     - Investment Horizon: {safe_get(prospect_data, 'investment_horizon_years', 0)} years
     - Experience Level: {safe_get(prospect_data, 'investment_experience_level', 'Unknown')}
-    
+
     Analysis Results:
     - Risk Level: {safe_get(risk_assessment, 'risk_level', 'Unknown')}
     - Risk Confidence: {safe_get(risk_assessment, 'confidence_score', 0):.1%}
@@ -318,16 +413,16 @@ def generate_chat_response(query: str, analysis_state) -> str:
     - Goal Success: {safe_get(goal_prediction, 'goal_success', 'Unknown')}
     - Success Probability: {safe_get(goal_prediction, 'probability', 0):.1%}
     - Recommended Products: {len(recommended_products)} products
-    
+
     Top Product Recommendation: {safe_get(recommended_products[0] if recommended_products else {}, 'product_name', 'None')}
     """
-    
-    # Create prompt template
+
+    # Prompt template
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", """
-        You are an expert Relationship Manager (RM) Assistant for a financial advisory firm. 
+        You are an expert Relationship Manager (RM) Assistant for a financial advisory firm.
         You help RMs understand and explain prospect analysis results to provide better client service.
-        
+
         Guidelines:
         - Be professional, knowledgeable, and helpful
         - Provide specific, actionable insights
@@ -335,39 +430,43 @@ def generate_chat_response(query: str, analysis_state) -> str:
         - Suggest concrete next steps when appropriate
         - Keep responses concise but comprehensive
         - Use financial advisory terminology appropriately
+        
+        Previous Conversation History:
+        {history}
         """),
         ("human", """
         Based on this prospect analysis:
-        
+
         {context}
-        
+
         Client Question: {query}
-        
+
         Please provide a helpful, professional response that addresses their question using the analysis data.
         """)
     ])
-    
+
     try:
-        # Initialize LLM
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=settings.gemini_api_key,
+        # ✅ Initialize Ollama LLM (local, no API key)
+        llm = ChatOllama(
+            model="llama3",
             temperature=0.3,
-            max_tokens=500
         )
-        
+
         # Generate response
         chain = prompt_template | llm
         response = chain.invoke({
             "context": context,
-            "query": query
+            "query": query,
+            "history": history_text
         })
-        
+
         return response.content.strip()
-        
+
     except Exception as e:
         logger.error(f"Chat response generation failed: {str(e)}")
         return generate_fallback_response(query, analysis_state)
+
+
 
 def generate_fallback_response(query: str, analysis_state) -> str:
     """Generate a rule-based response when AI is unavailable."""
@@ -620,30 +719,50 @@ def main():
             with tab3:
                 st.subheader("💬 RM Chat Assistant")
                 st.markdown("**Ask questions about the analysis results and get AI-powered insights!**")
-                
-                # Chat interface
-                user_query = st.text_input(
-                    "Ask a question about this analysis:",
-                    placeholder="e.g., Why was this risk level assigned? What are the key concerns? How can we improve the goal success rate?"
-                )
-                
-                if user_query:
+
+                # Initialize chat history
+                if "messages" not in st.session_state:
+                    st.session_state.messages = []
+
+                # Display chat messages from history
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+                # React to user input
+                if prompt := st.chat_input("Ask a question about this analysis..."):
+                    # Display user message in chat message container
+                    st.chat_message("user").markdown(prompt)
+                    # Add user message to chat history
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    
+                    # Save to file
+                    with open("chat_history.txt", "a", encoding="utf-8") as f:
+                        f.write(f"User: {prompt}\n")
+
                     with st.spinner("🤖 Analyzing your question..."):
                         try:
-                            response = generate_chat_response(user_query, st.session_state['analysis_result'])
-                            st.markdown("🤖 **RM Assistant:**")
-                            st.info(response)
+                            # Generate response passing history
+                            response = generate_chat_response(
+                                prompt, 
+                                st.session_state['analysis_result'],
+                                st.session_state.messages[:-1] # Pass history excluding current message for context
+                            )
                             
-                            # Add some suggested follow-up questions
-                            st.markdown("**💡 Suggested follow-up questions:**")
-                            suggestions = get_suggested_questions(st.session_state['analysis_result'])
-                            for suggestion in suggestions[:3]:
-                                if st.button(suggestion, key=f"suggest_{hash(suggestion)}"):
-                                    st.rerun()
-                                    
+                            # Display assistant response in chat message container
+                            with st.chat_message("assistant"):
+                                st.markdown(response)
+                            
+                            # Add assistant response to chat history
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            
+                            # Save to file
+                            with open("chat_history.txt", "a", encoding="utf-8") as f:
+                                f.write(f"Assistant: {response}\n")
+                                f.write("-" * 50 + "\n")
+                                
                         except Exception as e:
                             st.error(f"Sorry, I encountered an error: {str(e)}")
-                            st.info("🤖 **Assistant:** I'm having trouble right now, but you can ask me about risk levels, investment recommendations, goal feasibility, or next steps for this prospect.")
     
     # Footer
     st.markdown("---")

@@ -98,6 +98,8 @@ class RiskAssessmentAgent(CriticalAgent):
             # Handle both numeric and string predictions
             if isinstance(prediction, str):
                 risk_level = prediction
+                if risk_level == "Medium":
+                    risk_level = "Moderate"
             else:
                 risk_level = risk_mapping.get(prediction, "Moderate")
             confidence_score = float(max(probabilities))
@@ -240,8 +242,5 @@ class RiskAssessmentAgent(CriticalAgent):
         )
     
     def validate_output(self, state: WorkflowState) -> bool:
-        """Validate risk assessment output."""
-        return (
-            state.analysis.risk_assessment is not None and
-            state.analysis.risk_assessment.risk_level in ["Low", "Moderate", "High"]
-        )
+        ra = getattr(state.analysis, 'risk_assessment', None)
+        return ra is not None and getattr(ra, 'risk_level', None) in ["Low", "Moderate", "High"]

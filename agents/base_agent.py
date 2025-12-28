@@ -10,6 +10,8 @@ from langchain_core.language_models import BaseLanguageModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+# For Ollama local LLM
+from langchain_community.chat_models import ChatOllama
 
 from settings import get_settings
 from state import WorkflowState, AgentExecution
@@ -18,6 +20,38 @@ from state import WorkflowState, AgentExecution
 class BaseAgent(ABC):
     """Base class for all LangGraph agents."""
     
+    # def __init__(
+    #     self,
+    #     name: str,
+    #     description: str,
+    #     llm: Optional[BaseLanguageModel] = None,
+    #     temperature: float = 0.1,
+    #     max_tokens: int = 4000
+    # ):
+    #     self.name = name
+    #     self.description = description
+    #     self.settings = get_settings()
+    #     self.logger = logger.bind(agent=name)
+        
+    #     # Initialize LLM
+    #     if llm is None:
+    #         self.llm = ChatGoogleGenerativeAI(
+    #             model="gemini-2.5-flash",
+    #             google_api_key=self.settings.gemini_api_key,
+    #             temperature=temperature,
+    #             max_tokens=max_tokens
+    #         )
+    #     else:
+    #         self.llm = llm
+        
+    #     # Agent metadata
+    #     self.created_at = datetime.now()
+    #     self.execution_count = 0
+    #     self.total_execution_time = 0.0
+    #     self.success_count = 0
+    #     self.error_count = 0
+        
+    #     self.logger.info(f"Initialized agent: {self.name}")
     def __init__(
         self,
         name: str,
@@ -30,27 +64,25 @@ class BaseAgent(ABC):
         self.description = description
         self.settings = get_settings()
         self.logger = logger.bind(agent=name)
-        
+
         # Initialize LLM
         if llm is None:
-            self.llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
-                google_api_key=self.settings.gemini_api_key,
+            # ✅ Use Ollama instead of Gemini
+            self.llm = ChatOllama(
+                model="llama3",
                 temperature=temperature,
-                max_tokens=max_tokens
             )
         else:
             self.llm = llm
-        
+
         # Agent metadata
         self.created_at = datetime.now()
         self.execution_count = 0
         self.total_execution_time = 0.0
         self.success_count = 0
         self.error_count = 0
-        
+
         self.logger.info(f"Initialized agent: {self.name}")
-    
     @abstractmethod
     async def execute(self, state: WorkflowState) -> WorkflowState:
         """Execute the agent's main functionality."""
