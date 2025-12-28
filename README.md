@@ -1,5 +1,3 @@
----
-
 # 🤖 RM-AgenticAI-LangGraph
 
 ## Next-Gen AI-Powered Investment Advisor with Multi-Agent Intelligence
