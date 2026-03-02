@@ -92,7 +92,7 @@ RM-AgenticAI-LangGraph/
 ## 🛠️ Installation
 
 ```bash
-git clone https://github.com/Amruth22/RM-AgenticAI-LangGraph.git
+git clone https://github.com/Arpit-Dubey07/RM-AgenticAI-LangGraph.git
 cd RM-AgenticAI-LangGraph
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
